@@ -144,12 +144,24 @@ mrmailbox_t*         mrmailbox_new                  (mrmailboxcb_t, void* userDa
 void                 mrmailbox_unref                (mrmailbox_t*);
 
 
-/* Open/close a mailbox database, if the given file does not exist, it is created
-and can be set up using mrmailbox_set_config() afterwards.
-sth. like "~/file" won't work on all systems, if in doubt, use absolute paths for dbfile.
-for blobdir: the trailing slash is added by us, so if you want to avoid double slashes, do not add one.
+/* Open/close a mailbox database.
+
+mrmailbox_prepare_open() is used to set the desired files and directories.
+If the database file does not exist, mrmailbox_prepare_open() checks if there is a backup available.
+If so, mrmailbox_prepare_open() returns MR_CAN_USE_BACKUP and the user should be prompted if he wants to use it.
+If there is no backup available, mrmailbox_prepare_open() returns 1 on success and 0 otherwise.
+
+After that, mrmailbox_open() is used to open or create the mailbox, maybe by restoring a backup when passing the flag
+MR_CAN_USE_BACKUP.
+
+If mrmailbox_open() creates a new database file, this can be set up using mrmailbox_set_config() afterwards.
+
+Regarding the pathts: Sth. like "~/file" won't work on all systems, if in doubt, use absolute paths for dbfile.
+For blobdir/backupdir: the trailing slash is added by us, so if you want to avoid double slashes, do not add one.
 If you give NULL as blobdir, "dbfile-blobs" is used. */
-int                  mrmailbox_open                 (mrmailbox_t*, const char* dbfile, const char* blobdir);
+#define              MR_CAN_USE_BACKUP              0x02
+int                  mrmailbox_prepare_open         (mrmailbox_t*, const char* dbfile, const char* blobdir, const char* backupdir);
+int                  mrmailbox_open                 (mrmailbox_t*, int flags);
 void                 mrmailbox_close                (mrmailbox_t*);
 int                  mrmailbox_is_open              (const mrmailbox_t*);
 
@@ -279,7 +291,7 @@ To avoid double slashes, the given directory should not end with a slash. */
 #define MR_IMEX_IMPORT_SELF_KEYS   0x00010000
 #define MR_BAK_PREFIX             "delta-chat"
 #define MR_BAK_SUFFIX             "bak"
-void                 mrmailbox_imex                 (mrmailbox_t*, int what, const char* dir, const char* setup_code); /* user import/export function, sends MR_EVENT_IMEX_* events */
+void                 mrmailbox_imex                 (mrmailbox_t*, int what, const char* backupdir, const char* setup_code); /* user import/export function, sends MR_EVENT_IMEX_* events */
 char*                mrmailbox_create_setup_code    (mrmailbox_t*); /* should be written down by the user, forwareded to mrmailbox_imex() for encryption then, must be wiped and free()'d after usage */
 int                  mrmailbox_poke_spec            (mrmailbox_t*, const char* spec);          /* mainly for testing, import a folder with eml-files, a single eml-file, e-mail plus public key, ... NULL for the last command */
 

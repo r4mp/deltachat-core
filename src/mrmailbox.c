@@ -939,12 +939,43 @@ void mrmailbox_unref(mrmailbox_t* ths)
 }
 
 
-int mrmailbox_open(mrmailbox_t* ths, const char* dbfile, const char* blobdir)
+int mrmailbox_prepare_open(mrmailbox_t* ths, const char* dbfile, const char* blobdir, const char* backupdir)
+{
+	int success = 0;
+
+	if( ths == NULL || dbfile == NULL ) {
+		goto cleanup;
+	}
+
+	ths->m_dbfile = safe_strdup(dbfile);
+
+	/* set blob-directory
+	(to avoid double slashes, the given directory should not end with an slash) */
+	if( blobdir && blobdir[0] ) {
+		ths->m_blobdir = safe_strdup(blobdir);
+	}
+	else {
+		ths->m_blobdir = mr_mprintf("%s-blobs", dbfile);
+	}
+
+	success = 1;
+
+cleanup:
+	return success;
+}
+
+
+int mrmailbox_open(mrmailbox_t* ths, int flags)
 {
 	int success = 0;
 	int db_locked = 0;
 
-	if( ths == NULL || dbfile == NULL ) {
+	if( ths == NULL ) {
+		goto cleanup;
+	}
+
+	if( ths->m_dbfile == NULL ) {
+		mrmailbox_log_info(ths, 0, "Open error: Database file not set.");
 		goto cleanup;
 	}
 
@@ -955,23 +986,13 @@ int mrmailbox_open(mrmailbox_t* ths, const char* dbfile, const char* blobdir)
 	from which all configuration is read/written to. */
 
 	/* Create/open sqlite database */
-	if( !mrsqlite3_open__(ths->m_sql, dbfile) ) {
+	if( !mrsqlite3_open__(ths->m_sql, ths->m_dbfile) ) {
 		goto cleanup;
 	}
 	mrjob_kill_action__(ths, MRJ_CONNECT_TO_IMAP);
 
-	/* backup dbfile name */
-	ths->m_dbfile = safe_strdup(dbfile);
-
-	/* set blob-directory
-	(to avoid double slashed, the given directory should not end with an slash) */
-	if( blobdir && blobdir[0] ) {
-		ths->m_blobdir = safe_strdup(blobdir);
-	}
-	else {
-		ths->m_blobdir = mr_mprintf("%s-blobs", dbfile);
-		mr_create_folder(ths->m_blobdir, ths);
-	}
+	/* create blob-directory */
+	mr_create_folder(ths->m_blobdir, ths);
 
 	/* success */
 	success = 1;
@@ -982,6 +1003,12 @@ cleanup:
 		if( mrsqlite3_is_open(ths->m_sql) ) {
 			mrsqlite3_close__(ths->m_sql);
 		}
+
+		free(ths->m_dbfile);
+		ths->m_dbfile = NULL;
+
+		free(ths->m_blobdir);
+		ths->m_blobdir = NULL;
 	}
 
 	if( db_locked ) {

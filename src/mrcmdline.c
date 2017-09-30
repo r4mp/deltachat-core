@@ -204,7 +204,8 @@ char* mrmailbox_cmdline(mrmailbox_t* mailbox, const char* cmdline)
 	{
 		if( arg1 ) {
 			mrmailbox_close(mailbox);
-			ret = mrmailbox_open(mailbox, arg1, NULL)? COMMAND_SUCCEEDED : COMMAND_FAILED;
+			mrmailbox_prepare_open(mailbox, arg1, NULL, NULL);
+			ret = mrmailbox_open(mailbox, 0)? COMMAND_SUCCEEDED : COMMAND_FAILED;
 		}
 		else {
 			ret = safe_strdup("ERROR: Argument <file> missing.");

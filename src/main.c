@@ -114,7 +114,8 @@ int main(int argc, char ** argv)
 
 	/* open database from the commandline (if omitted, it can be opened using the `open`-command) */
 	if( argc == 2 ) {
-		if( !mrmailbox_open(mailbox, argv[1], NULL) ) {
+		mrmailbox_prepare_open(mailbox, argv[1], NULL, NULL);
+		if( !mrmailbox_open(mailbox, 0) ) {
 			printf("ERROR: Cannot open mailbox.\n");
 		}
 	}
